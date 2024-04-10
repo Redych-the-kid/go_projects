@@ -22,21 +22,6 @@ type GetBannerParams struct {
 	Token *string `json:"token,omitempty"`
 }
 
-// PostBannerJSONBody defines parameters for PostBanner.
-type PostBannerJSONBody struct {
-	// Content Содержимое баннера
-	Content *map[string]interface{} `json:"content,omitempty"`
-
-	// FeatureId Идентификатор фичи
-	FeatureId *int `json:"feature_id,omitempty"`
-
-	// IsActive Флаг активности баннера
-	IsActive *bool `json:"is_active,omitempty"`
-
-	// TagIds Идентификаторы тэгов
-	TagIds *[]int `json:"tag_ids,omitempty"`
-}
-
 // PostBannerParams defines parameters for PostBanner.
 type PostBannerParams struct {
 	// Token Токен админа
@@ -49,20 +34,6 @@ type DeleteBannerIdParams struct {
 	Token *string `json:"token,omitempty"`
 }
 
-// PatchBannerIdJSONBody defines parameters for PatchBannerId.
-type PatchBannerIdJSONBody struct {
-	// Content Содержимое баннера
-	Content *map[string]interface{} `json:"content"`
-
-	// Featu
-	FeatureId *int `json:"feature_id"`
-
-	// IsActive Флаг активности баннера
-	IsActive *bool `json:"is_active"`
-
-	// TagIds Идентификаторы тэгов
-	TagIds *[]int `json:"tag_ids"`
-}
 // PatchBannerIdParams defines parameters for PatchBannerId.
 type PatchBannerIdParams struct {
 	// Token Токен админа
@@ -78,12 +49,6 @@ type GetUserBannerParams struct {
 	// Token Токен пользователя
 	Token *string `json:"token,omitempty"`
 }
-
-// PostBannerJSONRequestBody defines body for PostBanner for application/json ContentType.
-type PostBannerJSONRequestBody PostBannerJSONBody
-
-// PatchBannerIdJSONRequestBody defines body for PatchBannerId for application/json ContentType.
-type PatchBannerIdJSONRequestBody PatchBannerIdJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -158,8 +123,9 @@ func (w *ServerInterfaceWrapper) GetBanner(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
+	} else{
+		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
-	fmt.Print("AAA")
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetBanner(ctx, params)
 	return err
@@ -187,6 +153,8 @@ func (w *ServerInterfaceWrapper) PostBanner(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
+	} else{
+		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -223,6 +191,8 @@ func (w *ServerInterfaceWrapper) DeleteBannerId(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
+	} else{
+		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -258,6 +228,8 @@ func (w *ServerInterfaceWrapper) PatchBannerId(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
+	} else{
+		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -305,6 +277,8 @@ func (w *ServerInterfaceWrapper) GetUserBanner(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
+	} else{
+		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -327,14 +301,10 @@ type EchoRouter interface {
 	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 }
 
-// RegisterHandlers adds each server route to the EchoRouter.
-func RegisterHandlers(router EchoRouter, si ServerInterface) {
-	RegisterHandlersWithBaseURL(router, si, "127.0.0.1:8080")
-}
 
 // Registers handlers, and prepends BaseURL to the paths, so that the paths
 // can be served under a prefix.
-func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string) {
+func RegisterHandlers(router EchoRouter, si ServerInterface) {
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
