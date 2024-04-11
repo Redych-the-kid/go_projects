@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/labstack/echo/v4"
 	"github.com/lib/pq"
 )
@@ -14,6 +17,8 @@ import (
 type Server struct {
 	tokens map[string]string
 	db     *sql.DB
+	cache *redis.Client
+	ctx context.Context
 }
 
 type Banner struct {
@@ -33,8 +38,8 @@ func (s *Server) GetBanner(ctx echo.Context, params GetBannerParams) error {
 	if !validateAdminToken(*params.Token, s.tokens) {
 		return ctx.HTML(http.StatusForbidden, "Пользователь не имеет доступа")
 	}
-	query := getBannerQueryBuilder(params)
-	rows, err := s.db.Query(query)
+	query, args := getBannerQueryBuilder(params)
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, err.Error())
 	}
@@ -60,25 +65,25 @@ func (s *Server) PostBanner(ctx echo.Context, params PostBannerParams) error {
 	}
 	var data map[string]interface{}
 	if err := ctx.Bind(&data); err != nil {
-		return ctx.HTML(http.StatusBadRequest, err.Error())
+		return ctx.JSON(http.StatusBadRequest, err.Error())
 	}
 	var content map[string]interface{}
 	var feature_id int
 	var tag_ids []int
 	var is_active bool
-	if !jsonToParams(data, &content, &feature_id, &tag_ids, &is_active) {
-		fmt.Println(content, feature_id, tag_ids, is_active)
-		return ctx.HTML(http.StatusBadRequest, "Некорректные данные")
+	err := jsonToParams(data, &content, &feature_id, &tag_ids, &is_active)
+	if err != nil{
+		return ctx.JSON(http.StatusBadRequest, err.Error())
 	}
 	contentJSON, err := json.Marshal(content)
 	if err != nil {
-		return ctx.HTML(http.StatusBadRequest, err.Error())
+		return ctx.JSON(http.StatusBadRequest, err.Error())
 	}
 	var id int
 	query := `INSERT INTO banners (content, feature_id, tag_ids, is_active) VALUES ($1, $2, $3, $4) RETURNING id`
 	err = s.db.QueryRow(query, contentJSON, feature_id, pq.Array(tag_ids), is_active).Scan(&id)
 	if err != nil {
-		return ctx.HTML(http.StatusInternalServerError, err.Error())
+		return ctx.JSON(http.StatusInternalServerError, err.Error())
 	}
 	return ctx.JSON(http.StatusCreated, id)
 }
@@ -95,9 +100,9 @@ func (s *Server) DeleteBannerId(ctx echo.Context, id int, params DeleteBannerIdP
 	err := s.db.QueryRow(query, id).Scan(&scanID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return ctx.HTML(http.StatusNotFound, err.Error())
+			return ctx.HTML(http.StatusNotFound, "Баннер не найден")
 		} else {
-			return ctx.HTML(http.StatusInternalServerError, err.Error())
+			return ctx.JSON(http.StatusInternalServerError, err.Error())
 		}
 	}
 	return ctx.HTML(http.StatusNoContent, "Баннер успешно удалён")
@@ -112,31 +117,31 @@ func (s *Server) PatchBannerId(ctx echo.Context, id int, params PatchBannerIdPar
 	}
 	var data map[string]interface{} = make(map[string]interface{})
 	if err := ctx.Bind(&data); err != nil {
-		return ctx.HTML(http.StatusBadRequest, err.Error())
+		return ctx.JSON(http.StatusBadRequest, err.Error())
 	}
 	var content map[string]interface{}
 	var feature_id int
 	var tag_ids []int
 	var is_active bool
-	if !jsonToParams(data, &content, &feature_id, &tag_ids, &is_active) {
-		fmt.Println(content, feature_id, tag_ids, is_active)
-		return ctx.HTML(http.StatusBadRequest, "Некорректные данные")
+	err := jsonToParams(data, &content, &feature_id, &tag_ids, &is_active)
+	if err != nil{
+		return ctx.JSON(http.StatusBadRequest, err.Error())
 	}
 	contentJSON, err := json.Marshal(content)
 	if err != nil {
-		return ctx.HTML(http.StatusBadRequest, "Некорректные данные")
+		return ctx.JSON(http.StatusBadRequest, err.Error())
 	}
 	query := ` UPDATE banners
 	SET content = $1, feature_id = $2, tag_ids = $3, is_active = $4
 	WHERE id = $5;`
 	res, err := s.db.Exec(query, contentJSON, feature_id, pq.Array(tag_ids), is_active, id)
 	if err != nil {
-		return ctx.HTML(http.StatusInternalServerError, err.Error())
+		return ctx.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	count, err := res.RowsAffected()
 	if err != nil {
-		return ctx.HTML(http.StatusInternalServerError, err.Error())
+		return ctx.JSON(http.StatusInternalServerError, err.Error())
 	}
 	if count == 0 {
 		return ctx.HTML(http.StatusNotFound, "Баннер не найден")
@@ -148,9 +153,31 @@ func (s *Server) GetUserBanner(ctx echo.Context, params GetUserBannerParams) err
 	if !validateToken(*params.Token, s.tokens) {
 		return ctx.HTML(http.StatusUnauthorized, "Пользователь не авторизован")
 	}
+	var result map[string]interface{}
+	var is_active bool
+	if(params.UseLastRevision == nil || !*params.UseLastRevision){
+		value, err := s.cache.Get(s.ctx, fmt.Sprintf("%d:%d", params.FeatureId, params.TagId)).Result()
+		if err == nil {
+			err := json.Unmarshal([]byte(value), &result)
+			if err != nil{
+				return ctx.JSON(http.StatusBadRequest, err.Error())
+			}
+			activeVal, err := s.cache.Get(s.ctx, fmt.Sprintf("%d:%d:isactive", params.FeatureId, params.TagId)).Result()
+			if err != nil{
+				return ctx.JSON(http.StatusInternalServerError, err.Error())
+			}
+			is_active, err = strconv.ParseBool(activeVal)
+			if err != nil {
+				return ctx.JSON(http.StatusInternalServerError, err.Error())
+			}
+			if !is_active && !validateAdminToken(*params.Token, s.tokens) {
+				return ctx.HTML(http.StatusForbidden, "Пользователь не имеет доступа")
+			}
+			return ctx.JSON(http.StatusOK, result)
+		}
+	}
 	query := "select content,is_active from banners where feature_id = ($1) and ($2) = ANY(tag_ids)"
 	var jsonData []byte
-	var is_active bool
 	err := s.db.QueryRow(query, params.FeatureId, params.TagId).Scan(&jsonData, &is_active)
 	if err != nil {
 		return ctx.HTML(http.StatusNotFound, "Баннер не найден")
@@ -158,10 +185,17 @@ func (s *Server) GetUserBanner(ctx echo.Context, params GetUserBannerParams) err
 	if !is_active && !validateAdminToken(*params.Token, s.tokens) {
 		return ctx.HTML(http.StatusForbidden, "Пользователь не имеет доступа")
 	}
-	var result map[string]interface{}
 	err = json.Unmarshal(jsonData, &result)
 	if err != nil {
-		return ctx.HTML(http.StatusBadRequest, err.Error())
+		return ctx.JSON(http.StatusInternalServerError, err.Error())
+	}
+	err = s.cache.Set(s.ctx, fmt.Sprintf("%d:%d", params.FeatureId, params.TagId), jsonData, 5 * time.Minute).Err()
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, err.Error())
+	}
+	err = s.cache.Set(s.ctx, fmt.Sprintf("%d:%d:isactive", params.FeatureId, params.TagId), is_active, 5 * time.Minute).Err()
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, err.Error())
 	}
 	return ctx.JSON(http.StatusOK, result)
 }
