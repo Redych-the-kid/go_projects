@@ -3,34 +3,23 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
-
+	"os"
 	"github.com/go-redis/redis/v8"
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
 )
 
-const (
-	host     = "localhost"
-	port     = 5432
-	user     = "postgres"
-	password = "homuhomu"
-	dbname   = "postgres"
-)
-
 func main() {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
-	
-	db, err := sql.Open("postgres", psqlInfo)
+	databaseURL := os.Getenv("DATABASE_URL")
+	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 	cache := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr:     os.Getenv("REDIS_URL"),
 		Password: "",
-		DB: 0,
+		DB:       0,
 	})
 	ctx := context.Background()
 	var e = echo.New()
@@ -39,9 +28,9 @@ func main() {
 			"IGOTTHEPOWER!": "admin",
 			"IMACREEP":      "user",
 		},
-		db: db,
+		db:    db,
 		cache: cache,
-		ctx: ctx,
+		ctx:   ctx,
 	}
 	RegisterHandlers(e, server)
 	e.Start(":8080")
