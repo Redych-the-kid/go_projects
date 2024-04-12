@@ -159,7 +159,7 @@ func (s *Server) GetUserBanner(ctx echo.Context, params GetUserBannerParams) err
 		if err == nil {
 			err := json.Unmarshal([]byte(value), &result)
 			if err != nil{
-				return ctx.JSON(http.StatusBadRequest, err.Error())
+				return ctx.JSON(http.StatusInternalServerError, err.Error())
 			}
 			activeVal, err := s.cache.Get(s.ctx, fmt.Sprintf("%d:%d:isactive", params.FeatureId, params.TagId)).Result()
 			if err != nil{
@@ -175,7 +175,7 @@ func (s *Server) GetUserBanner(ctx echo.Context, params GetUserBannerParams) err
 			return ctx.JSON(http.StatusOK, result)
 		}
 	}
-	query := "select content,is_active from banners where feature_id = ($1) and ($2) = ANY(tag_ids)"
+	query := "SELECT content, is_active FROM banners WHERE feature_id = ($1) AND ($2) = ANY(tag_ids)"
 	var jsonData []byte
 	err := s.db.QueryRow(query, params.FeatureId, params.TagId).Scan(&jsonData, &is_active)
 	if err != nil {
