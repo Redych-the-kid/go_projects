@@ -30,7 +30,7 @@ type Banner struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
-func (s *Server) GetBanner(ctx echo.Context, params GetBannerParams) error {
+func (s *Server)  GetBanner(ctx echo.Context, params GetBannerParams) error {
 	if !validateToken(*params.Token, s.tokens) {
 		return ctx.HTML(http.StatusUnauthorized, "Пользователь не авторизован")
 	}

@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-redis/redismock/v8"
 	"github.com/labstack/echo/v4"
@@ -42,20 +41,16 @@ func TestUserBannerCacheGet(t *testing.T) {
 		cache: cache,
 		ctx:   context.Background(),
 	}
+	wrapper := ServerInterfaceWrapper{
+		Handler: server,
+	}
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/user_banner?tag_id=3&feature_id=2&use_last_revision=false", nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("token", "IMACREEP")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	params := GetUserBannerParams{
-		TagId:           3,
-		FeatureId:       2,
-		UseLastRevision: new(bool),   // Initialize a pointer to a bool
-		Token:           new(string), // Initialize a pointer to a string
-	}
-	*params.UseLastRevision = false // Set the value of the bool pointer
-	*params.Token = "IMACREEP"
-	if assert.NoError(t, server.GetUserBanner(c, params)) {
+	if assert.NoError(t, wrapper.GetUserBanner(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		body, err := io.ReadAll(rec.Body)
 		if err != nil{
@@ -100,20 +95,16 @@ func TestUserBannerGetCacheForbidden(t *testing.T){
 		cache: cache,
 		ctx:   context.Background(),
 	}
+	wrapper := ServerInterfaceWrapper{
+		Handler: server,
+	}
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/user_banner?tag_id=3&feature_id=2&use_last_revision=false", nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("token", "IMACREEP")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	params := GetUserBannerParams{
-		TagId:           3,
-		FeatureId:       2,
-		UseLastRevision: new(bool),   // Initialize a pointer to a bool
-		Token:           new(string), // Initialize a pointer to a string
-	}
-	*params.UseLastRevision = false // Set the value of the bool pointer
-	*params.Token = "IMACREEP"
-	if assert.NoError(t, server.GetUserBanner(c, params)){
+	if assert.NoError(t, wrapper.GetUserBanner(c)){
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 }
@@ -150,20 +141,16 @@ func TestUserBannerGetDB(t *testing.T){
 		cache: cache,
 		ctx:   context.Background(),
 	}
+	wrapper := ServerInterfaceWrapper{
+		Handler: server,
+	}
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/user_banner?tag_id=3&feature_id=2&use_last_revision=true", nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("token", "IMACREEP")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	params := GetUserBannerParams{
-		TagId:           3,
-		FeatureId:       2,
-		UseLastRevision: new(bool),   // Initialize a pointer to a bool
-		Token:           new(string), // Initialize a pointer to a string
-	}
-	*params.UseLastRevision = true // Set the value of the bool pointer
-	*params.Token = "IMACREEP"
-	if assert.NoError(t, server.GetUserBanner(c, params)){
+	if assert.NoError(t, wrapper.GetUserBanner(c)){
 		body, err := io.ReadAll(rec.Body)
 		if err != nil{
 			t.Fail()
@@ -213,20 +200,16 @@ func TestUserBannerGetDBForbidden(t *testing.T){
 		cache: cache,
 		ctx:   context.Background(),
 	}
+	wrapper := ServerInterfaceWrapper{
+		Handler: server,
+	}
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/user_banner?tag_id=3&feature_id=2&use_last_revision=true", nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("token", "IMACREEP")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	params := GetUserBannerParams{
-		TagId:           3,
-		FeatureId:       2,
-		UseLastRevision: new(bool),   // Initialize a pointer to a bool
-		Token:           new(string), // Initialize a pointer to a string
-	}
-	*params.UseLastRevision = true // Set the value of the bool pointer
-	*params.Token = "IMACREEP"
-	if assert.NoError(t, server.GetUserBanner(c, params)){
+	if assert.NoError(t, wrapper.GetUserBanner(c)){
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	}
 }
@@ -250,20 +233,16 @@ func TestUserBannerGetDBNotFound(t *testing.T){
 		cache: cache,
 		ctx:   context.Background(),
 	}
+	wrapper := ServerInterfaceWrapper{
+		Handler: server,
+	}
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/user_banner?tag_id=3&feature_id=2&use_last_revision=true", nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("token", "IMACREEP")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	params := GetUserBannerParams{
-		TagId:           3,
-		FeatureId:       2,
-		UseLastRevision: new(bool),   // Initialize a pointer to a bool
-		Token:           new(string), // Initialize a pointer to a string
-	}
-	*params.UseLastRevision = true // Set the value of the bool pointer
-	*params.Token = "IMACREEP"
-	if assert.NoError(t, server.GetUserBanner(c, params)){
+	if assert.NoError(t, wrapper.GetUserBanner(c)){
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	}
 }
@@ -284,20 +263,16 @@ func TestUserBannerGetDBUnauth(t *testing.T) {
 		cache: cache,
 		ctx:   context.Background(),
 	}
+	wrapper := ServerInterfaceWrapper{
+		Handler: server,
+	}
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/user_banner?tag_id=3&feature_id=2&use_last_revision=true", nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("token", "SCAMMER")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	params := GetUserBannerParams{
-		TagId:           3,
-		FeatureId:       2,
-		UseLastRevision: new(bool),   // Initialize a pointer to a bool
-		Token:           new(string), // Initialize a pointer to a string
-	}
-	*params.UseLastRevision = true // Set the value of the bool pointer
-	*params.Token = "SCAMMER"
-	if assert.NoError(t, server.GetUserBanner(c, params)){
+	if assert.NoError(t, wrapper.GetUserBanner(c)){
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	}
 }
