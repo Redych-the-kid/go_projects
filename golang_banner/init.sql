@@ -17,6 +17,8 @@ END;
 $$ language 'plpgsql';
 
 CREATE TRIGGER update_features_updated_at
-BEFORE UPDATE ON features
+BEFORE UPDATE ON banners
 FOR EACH ROW
 EXECUTE PROCEDURE update_updated_at_column();
+
+INSERT INTO banners (content, feature_id, tag_ids, is_active) VALUES ('{"key" : "value"}'::jsonb, 2, ARRAY[2, 3], false)

@@ -247,7 +247,7 @@ func TestUserBannerGetDBNotFound(t *testing.T){
 	}
 }
 
-func TestUserBannerGetDBUnauth(t *testing.T) {
+func TestUserBannerGetUnauth(t *testing.T) {
 	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -275,4 +275,50 @@ func TestUserBannerGetDBUnauth(t *testing.T) {
 	if assert.NoError(t, wrapper.GetUserBanner(c)){
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	}
+}
+
+func TestUserBannerGetBadReq(t *testing.T){
+	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+	cache, _ := redismock.NewClientMock()
+	server := &Server{
+		tokens: map[string]string{
+			"IGOTTHEPOWER!": "admin",
+			"IMACREEP":      "user",
+		},
+		db:    db,
+		cache: cache,
+		ctx:   context.Background(),
+	}
+	wrapper := ServerInterfaceWrapper{
+		Handler: server,
+	}
+	e := echo.New()
+
+	req := httptest.NewRequest(http.MethodGet, "/user_banner?feature_id=2", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	err = wrapper.GetUserBanner(c)
+	httpError := err.(*echo.HTTPError)
+	assert.Equal(t, http.StatusBadRequest, httpError.Code)
+	assert.Equal(t, "code=400, message=Invalid format for parameter tag_id: query parameter 'tag_id' is required", err.Error())
+	
+	req = httptest.NewRequest(http.MethodGet, "/user_banner?tag_id=2", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	assert.EqualError(t, wrapper.GetUserBanner(c), "code=400, message=Invalid format for parameter feature_id: query parameter 'feature_id' is required")
+
+	req = httptest.NewRequest(http.MethodGet, "/user_banner?tag_id=3&feature_id=2", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	err = wrapper.GetUserBanner(c)
+	httpError = err.(*echo.HTTPError)
+	assert.Equal(t, http.StatusUnauthorized, httpError.Code)
+	assert.Equal(t, "code=401, message=No token was provided", err.Error())
 }
