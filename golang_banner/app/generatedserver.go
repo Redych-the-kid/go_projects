@@ -123,7 +123,7 @@ func (w *ServerInterfaceWrapper) GetBanner(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
-	} else{
+	} else {
 		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 	// Invoke the callback with all the unmarshaled arguments
@@ -153,7 +153,7 @@ func (w *ServerInterfaceWrapper) PostBanner(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
-	} else{
+	} else {
 		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 
@@ -191,7 +191,7 @@ func (w *ServerInterfaceWrapper) DeleteBannerId(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
-	} else{
+	} else {
 		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 
@@ -228,7 +228,7 @@ func (w *ServerInterfaceWrapper) PatchBannerId(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
-	} else{
+	} else {
 		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 
@@ -277,7 +277,7 @@ func (w *ServerInterfaceWrapper) GetUserBanner(ctx echo.Context) error {
 		}
 
 		params.Token = &Token
-	} else{
+	} else {
 		return echo.NewHTTPError(http.StatusUnauthorized, "No token was provided")
 	}
 
@@ -300,7 +300,6 @@ type EchoRouter interface {
 	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 }
-
 
 // Registers handlers, and prepends BaseURL to the paths, so that the paths
 // can be served under a prefix.

@@ -4,11 +4,11 @@ FROM golang:1.20
 WORKDIR /app
 
 # Download Go modules
-COPY go.mod go.sum ./
+COPY app/go.mod app/go.sum ./
 RUN go mod download
 
 # Copy the source code
-COPY *.go ./
+COPY app/*.go ./
 
 # Build the application
 RUN go build -o bin .
