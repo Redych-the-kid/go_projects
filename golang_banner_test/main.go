@@ -190,6 +190,98 @@ func main() {
 	error_message = "No token was provided"
 	if message != error_message{
 		fmt.Printf("Test 5 failed: expected message %s, got %s", error_message, message)
+		return
+	}
+
+	req, err = http.NewRequest("GET", "http://127.0.0.1:8080/user_banner?tag_id=true&feature_id=2", nil)
+	if err != nil{
+		fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+	resp, err = client.Do(req)
+	if err != nil {
+    	fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		fmt.Printf("Test 5 failed: expected code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+		return
+	}
+	
+	body, err = io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+
+	json.Unmarshal(body, &jsonBody)
+	message = jsonBody["message"]
+	error_message = "Invalid format for parameter tag_id: error binding string parameter: strconv.ParseInt: parsing \"true\": invalid syntax"
+	if message != error_message{
+		fmt.Printf("Test 5 failed: expected message %s, got %s", error_message, message)
+		return
+	}
+
+	req, err = http.NewRequest("GET", "http://127.0.0.1:8080/user_banner?tag_id=2&feature_id=true", nil)
+	if err != nil{
+		fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+	resp, err = client.Do(req)
+	if err != nil {
+    	fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		fmt.Printf("Test 5 failed: expected code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+		return
+	}
+	
+	body, err = io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+
+	json.Unmarshal(body, &jsonBody)
+	message = jsonBody["message"]
+	error_message = "Invalid format for parameter feature_id: error binding string parameter: strconv.ParseInt: parsing \"true\": invalid syntax"
+	if message != error_message{
+		fmt.Printf("Test 5 failed: expected message %s, got %s", error_message, message)
+		return
+	}
+
+	req, err = http.NewRequest("GET", "http://127.0.0.1:8080/user_banner?tag_id=3&feature_id=2", nil)
+	req.Header.Set("token", "")
+	if err != nil{
+		fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+	resp, err = client.Do(req)
+	if err != nil {
+    	fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		fmt.Printf("Test 5 failed: expected code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+		return
+	}
+	
+	body, err = io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Test 5 failed:%s", err.Error())
+		return
+	}
+
+	json.Unmarshal(body, &jsonBody)
+	message = jsonBody["message"]
+	error_message = "Invalid format for parameter token: parameter 'token' is empty, can't bind its value"
+	if message != error_message{
+		fmt.Printf("Test 5 failed: expected message %s, got %s", error_message, message)
+		return
 	}
 	println("Test 5:PASS")
 	println("ALL TESTS HAVE BEEN PASSED!")
